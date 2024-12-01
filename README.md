@@ -1,1 +1,1 @@
-"Project for 2024 Advent of Code Solutions" 
+Project for 2024 Advent of Code Solutions using Java 
