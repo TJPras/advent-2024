@@ -1,5 +1,10 @@
 package dev.tjpraschunus.aoc2024;
 
+import java.io.BufferedReader;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
+
 public abstract class Day {
 
     private final int year;
@@ -24,5 +29,12 @@ public abstract class Day {
         long part2Elapsed = System.currentTimeMillis() - start - part1Elapsed;
         System.out.printf("(%dms)%n", part2Elapsed);
         System.out.printf("| Total time: %dms%n", part1Elapsed + part2Elapsed);
+    }
+
+    public BufferedReader readInput(String dayNumber) {
+        InputStream inputStream = Day.class.getResourceAsStream("/day" + dayNumber + ".txt");
+        assert inputStream != null;
+        InputStreamReader streamReader = new InputStreamReader(inputStream, StandardCharsets.UTF_8);
+        return new BufferedReader(streamReader);
     }
 }
