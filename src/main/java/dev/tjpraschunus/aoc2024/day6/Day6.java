@@ -4,13 +4,18 @@ import dev.tjpraschunus.aoc2024.Day;
 
 import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.PrintWriter;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
+
+import static java.util.Map.entry;
 
 public class Day6 extends Day {
 
     private final List<List<String>> maze;
     private int startingPosRow;
     private int startingPosCol;
+    private List<List<String>> traversedMaze;
 
     public Day6() {
         super(2024, 6);
@@ -34,9 +39,14 @@ public class Day6 extends Day {
         } catch (IOException exc) {
             System.out.println("Could not read from input file.");
         }
-        Guard mazeGuard = new Guard("^", List.copyOf(maze), startingPosRow, startingPosCol);
+        List<List<String>> guardsMaze = new ArrayList<>();
+        for (List<String> row : maze) {
+            guardsMaze.add(new ArrayList<>(List.copyOf(row)));
+        }
+        Guard mazeGuard = new Guard("^", guardsMaze, startingPosRow, startingPosCol);
         mazeGuard.patrol();
         int visited = 0;
+        traversedMaze = mazeGuard.getMaze();
         for (List<String> row : mazeGuard.getMaze()) {
             for (String col : row) {
                 if (col.equals("X")) {
@@ -58,11 +68,16 @@ public class Day6 extends Day {
                 if (maze.get(i).get(j).equals("#")) {
                     continue;
                 }
-                List<List<String>> modifiedMaze = List.copyOf(maze);
-                modifiedMaze.get(i).set(j, "#");
-                Guard mazeGuard = new Guard("^", modifiedMaze, startingPosRow, startingPosCol);
-                if (mazeGuard.loopingPatrol()) {
-                    numLocations++;
+                if (traversedMaze.get(i).get(j).equals("X")) {
+                    List<List<String>> modifiedMaze = new ArrayList<>(List.of());
+                    for (List<String> row : maze) {
+                        modifiedMaze.add(new ArrayList<>(List.copyOf(row)));
+                    }
+                    modifiedMaze.get(i).set(j, "#");
+                    Guard mazeGuard = new Guard("^", modifiedMaze, startingPosRow, startingPosCol);
+                    if (mazeGuard.loopingPatrol()) {
+                        numLocations++;
+                    }
                 }
             }
         }
@@ -75,17 +90,23 @@ public class Day6 extends Day {
         private List<List<String>> maze;
         private int currentRow;
         private int currentCol;
-        private HashMap<String, HashMap<Integer, Integer>> hitObstacles;
+        private HashMap<String, HashMap<Integer, Set<Integer>>> hitObstacles;
 
         public Guard(String direction, List<List<String>> maze, int startingRow, int startingCol) {
             this.direction = direction;
             currentRow = startingRow;
             currentCol = startingCol;
             this.maze = maze;
+            hitObstacles = new HashMap<>(Map.ofEntries(
+                    entry("^", new HashMap<>()),
+                    entry(">", new HashMap<>()),
+                    entry("v", new HashMap<>()),
+                    entry("<", new HashMap<>())
+            ));
         }
 
         public List<List<String>> getMaze() {
-            return maze;
+            return this.maze;
         }
 
         public boolean loopingPatrol() {
@@ -105,81 +126,34 @@ public class Day6 extends Day {
                 case "^":
                     if (currentRow == 0) {
                         return false;
-                    } else {
-                        return maze.get(currentRow-1).get(currentCol).equals("O");
                     }
+                    if (this.maze.get(currentRow - 1).get(currentCol).equals("#") & hitObstacles.get(direction).containsKey(currentRow - 1)) {
+                        return hitObstacles.get(direction).get(currentRow - 1).contains(currentCol);
+                    }
+                    return false;
                 case ">":
-                    if (currentCol == maze.getFirst().size()-1) {
+                    if (currentCol == this.maze.getFirst().size()-1) {
                         return false;
+                    } else if (this.maze.get(currentRow).get(currentCol+1).equals("#") & hitObstacles.get(direction).containsKey(currentRow)){
+                        return hitObstacles.get(direction).get(currentRow).contains(currentCol+1);
                     } else {
-                        return maze.get(currentRow).get(currentCol+1).equals("O");
+                        return false;
                     }
                 case "v":
-                    if (currentRow == maze.size()-1) {
+                    if (currentRow == this.maze.size()-1) {
                         return false;
+                    } else if (this.maze.get(currentRow+1).get(currentCol).equals("#") & hitObstacles.get(direction).containsKey(currentRow+1)) {
+                        return hitObstacles.get(direction).get(currentRow+1).contains(currentCol);
                     } else {
-                        return maze.get(currentRow+1).get(currentCol).equals("O");
+                        return false;
                     }
                 default: // "<"
                     if (currentCol == 0) {
-                        return true;
+                        return false;
+                    } else if (this.maze.get(currentRow).get(currentCol-1).equals("#") & hitObstacles.get(direction).containsKey(currentRow)) {
+                        return hitObstacles.get(direction).get(currentRow).contains(currentCol-1);
                     } else {
-                        return maze.get(currentRow).get(currentCol-1).equals("O");
-                    }
-            }
-        }
-
-        public boolean pathTraveled() {
-            int row = currentRow;
-            int col = currentCol;
-            switch (direction) {
-                case "^":
-                    while (true) {
-                        if (row <= 0) {
-                            return false;
-                        } else if (maze.get(row).get(currentCol).equals("#")) {
-                            return true;
-                        } else if (maze.get(row).get(currentCol).equals("X")) {
-                            row--;
-                        } else {
-                            return false;
-                        }
-                    }
-                case ">":
-                    while (true) {
-                        if (col >= maze.getFirst().size()-1) {
-                            return false;
-                        } else if (maze.get(currentRow).get(col).equals("#")) {
-                            return true;
-                        } else if (maze.get(currentRow).get(col).equals("X")) {
-                            col++;
-                        } else {
-                            return false;
-                        }
-                    }
-                case "v":
-                    while (true) {
-                        if (row >= maze.size()-1) {
-                            return false;
-                        } else if (maze.get(row).get(currentCol).equals("#")) {
-                            return true;
-                        } else if (maze.get(row).get(currentCol).equals("X")) {
-                            row++;
-                        } else {
-                            return false;
-                        }
-                    }
-                default: // "<"
-                    while (true) {
-                        if (col <= 0) {
-                            return false;
-                        } else if (maze.get(currentRow).get(col).equals("#")) {
-                            return true;
-                        } else if (maze.get(currentRow).get(col).equals("X")) {
-                            col--;
-                        } else {
-                            return false;
-                        }
+                        return false;
                     }
             }
         }
@@ -223,35 +197,35 @@ public class Day6 extends Day {
                 case "^" -> {
                     if (currentRow == 0) {
                         yield true;
-                    } else if (maze.get(currentRow - 1).get(currentCol).equals("#") | maze.get(currentRow - 1).get(currentCol).equals("O")) {
-                        maze.get(currentRow - 1).set(currentCol, "O");
+                    } else if (this.maze.get(currentRow - 1).get(currentCol).equals("#")) {
+                        this.addHit(currentRow-1, currentCol);
                         yield false;
                     }
                     yield true;
                 }
                 case ">" -> {
-                    if (currentCol == maze.getFirst().size() - 1) {
+                    if (currentCol == this.maze.getFirst().size() - 1) {
                         yield true;
-                    } else if (maze.get(currentRow).get(currentCol + 1).equals("#") | maze.get(currentRow).get(currentCol + 1).equals("O")) {
-                        maze.get(currentRow).set(currentCol + 1, "O");
+                    } else if (this.maze.get(currentRow).get(currentCol + 1).equals("#")) {
+                        this.addHit(currentRow, currentCol+1);
                         yield false;
                     }
                     yield true;
                 }
                 case "v" -> {
-                    if (currentRow == maze.size() - 1) {
+                    if (currentRow == this.maze.size() - 1) {
                         yield true;
-                    } else if (maze.get(currentRow + 1).get(currentCol).equals("#") | maze.get(currentRow + 1).get(currentCol).equals("O")) {
-                        maze.get(currentRow + 1).set(currentCol, "O");
+                    } else if (this.maze.get(currentRow + 1).get(currentCol).equals("#")) {
+                        this.addHit(currentRow+1, currentCol);
                         yield false;
                     }
                     yield true;
                 }
-                default -> {
+                default -> { // "<"
                     if (currentCol == 0) {
                         yield true;
-                    } else if (maze.get(currentRow).get(currentCol - 1).equals("#") | maze.get(currentRow).get(currentCol - 1).equals("O")) {
-                        maze.get(currentRow).set(currentCol - 1, "O");
+                    } else if (this.maze.get(currentRow).get(currentCol - 1).equals("#")) {
+                        this.addHit(currentRow, currentCol-1);
                         yield false;
                     }
                     yield true;
@@ -262,16 +236,16 @@ public class Day6 extends Day {
         private void mark() {
             switch (direction){
                 case "^":
-                    maze.get(currentRow+1).set(currentCol, "X");
+                    this.maze.get(currentRow+1).set(currentCol, "X");
                     break;
                 case ">":
-                    maze.get(currentRow).set(currentCol-1, "X");
+                    this.maze.get(currentRow).set(currentCol-1, "X");
                     break;
                 case "v":
-                    maze.get(currentRow-1).set(currentCol, "X");
+                    this.maze.get(currentRow-1).set(currentCol, "X");
                     break;
                 default: // "<"
-                    maze.get(currentRow).set(currentCol+1, "X");
+                    this.maze.get(currentRow).set(currentCol+1, "X");
                     break;
             }
         }
@@ -293,11 +267,32 @@ public class Day6 extends Day {
             }
         }
 
+        private void addHit(int row, int col) {
+            if (hitObstacles.get(direction).containsKey(row)) {
+                hitObstacles.get(direction).get(row).add(col);
+            } else {
+                hitObstacles.get(direction).put(row, new HashSet<>());
+                hitObstacles.get(direction).get(row).add(col);
+            }
+        }
+
         private boolean inbounds() {
-            if ((currentRow == maze.size()) | (currentRow < 0)) {
+            if ((currentRow == this.maze.size()) | (currentRow < 0)) {
                 return false;
             }
-            return !((currentCol == maze.getFirst().size()) | (currentCol < 0));
+            return !((currentCol == this.maze.getFirst().size()) | (currentCol < 0));
+        }
+
+        private void printMaze() {
+            try {
+                PrintWriter writer = new PrintWriter("day6_output.txt", StandardCharsets.UTF_8);
+                for(List<String> row : this.maze) {
+                    writer.println(String.join("", row));
+                }
+                writer.close();
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
         }
     }
 }
